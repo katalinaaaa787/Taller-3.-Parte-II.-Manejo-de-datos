@@ -1,0 +1,137 @@
+# ============================================================
+# 1. CARGAR PAQUETES
+# ============================================================
+
+library(haven)
+library(dplyr)
+library(readxl)
+
+
+# ============================================================
+# 2. CARGAR BASE DE DATOS DE TENDEROS
+# ============================================================
+
+TenderosFU03_Publica <- read_dta(
+  "~/Downloads/TenderosFU03_Publica.dta"
+)
+
+
+# ============================================================
+# 3. TAREA: USO DE INTERNET POR MUNICIPIO
+# ============================================================
+
+tenderos_tarea <- TenderosFU03_Publica %>%
+  select(uso_internet, Munic_Dept)
+
+
+tenderos_tareaAgrupar <- tenderos_tarea %>%
+  group_by(Munic_Dept) %>%
+  summarise(
+    Total = mean(uso_internet, na.rm = TRUE)
+  )
+
+
+# ============================================================
+# 4. USO DE INTERNET POR ACTIVIDAD ECONÓMICA
+# ============================================================
+
+tenderos_tareaActividad <- TenderosFU03_Publica %>%
+  summarise(
+    Tienda            = mean(uso_internet[actG1 == 1], na.rm = TRUE) * 100,
+    Comida_preparada  = mean(uso_internet[actG2 == 1], na.rm = TRUE) * 100,
+    Peluqueria_bellez = mean(uso_internet[actG3 == 1], na.rm = TRUE) * 100,
+    Ropa              = mean(uso_internet[actG4 == 1], na.rm = TRUE) * 100,
+    Otras_variedades  = mean(uso_internet[actG5 == 1], na.rm = TRUE) * 100,
+    Papeleria_comunic = mean(uso_internet[actG6 == 1], na.rm = TRUE) * 100,
+    Vida_nocturna     = mean(uso_internet[actG7 == 1], na.rm = TRUE) * 100,
+    Productos_inventa = mean(uso_internet[actG8 == 1], na.rm = TRUE) * 100,
+    Salud             = mean(uso_internet[actG9 == 1], na.rm = TRUE) * 100,
+    Servicios         = mean(uso_internet[actG10 == 1], na.rm = TRUE) * 100,
+    Ferreteria_afines = mean(uso_internet[actG11 == 1], na.rm = TRUE) * 100
+  )
+
+
+# ============================================================
+# 5. USO DE INTERNET POR ACTIVIDAD Y MUNICIPIO
+# ============================================================
+
+tenderos_tareaCiudadActividad <- TenderosFU03_Publica %>%
+  group_by(Munic_Dept) %>%
+  summarise(
+    Tienda             = mean(uso_internet[actG1 == 1], na.rm = TRUE) * 100,
+    Comida_preparada   = mean(uso_internet[actG2 == 1], na.rm = TRUE) * 100,
+    Peluqueria_bellez  = mean(uso_internet[actG3 == 1], na.rm = TRUE) * 100,
+    Ropa               = mean(uso_internet[actG4 == 1], na.rm = TRUE) * 100,
+    Otras_variedades   = mean(uso_internet[actG5 == 1], na.rm = TRUE) * 100,
+    Papeleria_comunic  = mean(uso_internet[actG6 == 1], na.rm = TRUE) * 100,
+    Vida_nocturna      = mean(uso_internet[actG7 == 1], na.rm = TRUE) * 100,
+    Productos_inventa  = mean(uso_internet[actG8 == 1], na.rm = TRUE) * 100,
+    Salud              = mean(uso_internet[actG9 == 1], na.rm = TRUE) * 100,
+    Servicios          = mean(uso_internet[actG10 == 1], na.rm = TRUE) * 100,
+    Ferreteria_afines  = mean(uso_internet[actG11 == 1], na.rm = TRUE) * 100
+  )
+
+
+# ============================================================
+# 6. CARGAR BASE DE POBLACIÓN DEL DANE
+# ============================================================
+
+poblacion_dane <- read_excel(
+  "~/Downloads/PPED-AreaMun-2018-2042_VP.xlsx",
+  sheet = "PobMunicipalxÁrea",
+  skip = 7
+)
+
+
+# ============================================================
+# 7. SELECCIONAR POBLACIÓN TOTAL DEL MUNICIPIO
+#    AÑO 2022
+# ============================================================
+
+dane_tarea4 <- poblacion_dane %>%
+  filter(
+    `ÁREA GEOGRÁFICA` == "Total",
+    AÑO == 2022
+  ) %>%
+  mutate(
+    MPIO = sprintf("%05d", as.numeric(MPIO))
+  )
+
+
+# ============================================================
+# 8. PREPARAR CÓDIGO DEL MUNICIPIO EN LA BASE DE TENDEROS
+# ============================================================
+
+tarea4_poblacion <- TenderosFU03_Publica %>%
+  select(uso_internet, Munic_Dept) %>%
+  mutate(
+    Munic_Dept = sprintf("%05d", as.numeric(Munic_Dept))
+  )
+
+
+# ============================================================
+# 9. UNIR INFORMACIÓN DE TENDEROS CON POBLACIÓN DEL DANE
+# ============================================================
+
+tarea4_poblacion <- tarea4_poblacion %>%
+  left_join(
+    dane_tarea4 %>%
+      select(MPIO, DPMP, TOTAL),
+    by = c("Munic_Dept" = "MPIO")
+  )
+
+
+# ============================================================
+# 10. BASE FINAL DE LA TAREA 4
+#     USO DE INTERNET + MUNICIPIO + POBLACIÓN
+# ============================================================
+
+tarea4_final <- tenderos_tareaAgrupar %>%
+  mutate(
+    Munic_Dept = sprintf("%05d", as.numeric(Munic_Dept))
+  ) %>%
+  left_join(
+    dane_tarea4 %>%
+      select(MPIO, DPMP, TOTAL),
+    by = c("Munic_Dept" = "MPIO")
+  )
