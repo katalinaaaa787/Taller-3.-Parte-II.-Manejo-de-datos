@@ -5,6 +5,9 @@
 library(haven)
 library(dplyr)
 library(readxl)
+library(tidyr)
+library(ggplot2)
+library(forcats)
 
 
 # ============================================================
@@ -143,7 +146,7 @@ tarea4_final <- tenderos_tareaAgrupar %>%
 # ============================================================
 
 tabla_larga <- tenderos_tareaCiudadActividad %>%
-  tidyr::pivot_longer(
+  pivot_longer(
     cols = Tienda:Ferreteria_afines,
     names_to = "Actividad",
     values_to = "internet"
@@ -170,6 +173,223 @@ tabla_extensa <- tenderos_tareaCiudadActividad %>%
     dane_tarea4 %>% 
       select(MPIO, DPMP, TOTAL),
     by = c("Munic_Dept" = "MPIO")
+  )
+
+
+# ============================================================
+# 13. CREAR PROMEDIO DE INTERNET POR MUNICIPIO
+#
+# Se calcula el promedio de las actividades económicas
+# disponibles para cada municipio.
+# ============================================================
+
+tabla_extensa <- tabla_extensa %>%
+  mutate(
+    internet_promedio = rowMeans(
+      select(
+        .,
+        Tienda,
+        Comida_preparada,
+        Peluqueria_bellez,
+        Ropa,
+        Otras_variedades,
+        Papeleria_comunic,
+        Vida_nocturna,
+        Productos_inventa,
+        Salud,
+        Servicios,
+        Ferreteria_afines
+      ),
+      na.rm = TRUE
+    )
+  )
+
+
+# ============================================================
+# 14. GRÁFICA 1
+#
+# ¿QUÉ CIUDADES SUPERAN EL PROMEDIO NACIONAL DE INTERNET?
+# ============================================================
+
+promedio_nacional <- mean(
+  tabla_extensa$internet_promedio,
+  na.rm = TRUE
+)
+
+tabla_extensa <- tabla_extensa %>%
+  mutate(
+    vs_promedio = ifelse(
+      internet_promedio >= promedio_nacional,
+      "Por encima",
+      "Por debajo"
+    )
+  )
+
+
+ggplot(
+  tabla_extensa,
+  aes(
+    x = fct_reorder(DPMP, internet_promedio),
+    y = internet_promedio,
+    fill = vs_promedio
+  )
+) +
+  geom_col() +
+  geom_hline(
+    yintercept = promedio_nacional,
+    linetype = "dashed",
+    color = "grey30"
+  ) +
+  coord_flip() +
+  scale_fill_manual(
+    values = c(
+      "Por encima" = "#2A9D8F",
+      "Por debajo" = "#E76F51"
+    ),
+    name = NULL
+  ) +
+  labs(
+    title = "¿Qué ciudades superan el promedio nacional de internet?",
+    subtitle = paste0(
+      "Línea punteada = promedio nacional (",
+      round(promedio_nacional, 1),
+      "%)"
+    ),
+    x = NULL,
+    y = "% promedio de tiendas con internet"
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(
+    plot.title = element_text(face = "bold")
+  )
+
+
+# ============================================================
+# 15. RESUMEN POR SECTOR
+# ============================================================
+
+resumen_sector <- tabla_larga %>%
+  group_by(Actividad) %>%
+  summarise(
+    internet_promedio = mean(internet, na.rm = TRUE)
+  ) %>%
+  mutate(
+    Actividad = fct_reorder(
+      Actividad,
+      internet_promedio
+    ),
+    destacar = case_when(
+      internet_promedio == max(internet_promedio) ~ "Mejor",
+      internet_promedio == min(internet_promedio) ~ "Peor",
+      TRUE ~ "Otro"
+    )
+  )
+
+
+# ============================================================
+# 16. GRÁFICA 2
+#
+# USO DE INTERNET POR ACTIVIDAD ECONÓMICA
+# ============================================================
+
+ggplot(
+  resumen_sector,
+  aes(
+    x = Actividad,
+    y = internet_promedio,
+    fill = destacar
+  )
+) +
+  geom_col(show.legend = FALSE) +
+  coord_flip() +
+  scale_fill_manual(
+    values = c(
+      "Mejor" = "#2A9D8F",
+      "Peor" = "#E76F51",
+      "Otro" = "grey75"
+    )
+  ) +
+  labs(
+    title = "Salud lidera en uso de internet; Tienda queda rezagada",
+    x = NULL,
+    y = "% de tiendas con internet"
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(
+    plot.title = element_text(face = "bold")
+  )
+
+
+# ============================================================
+# 17. IDENTIFICAR COMBINACIONES CIUDAD-SECTOR
+#
+# Se clasifican según los percentiles 15 y 85
+# de penetración de internet.
+# ============================================================
+
+top_bottom <- tabla_larga %>%
+  mutate(
+    resaltar = case_when(
+      internet >= quantile(
+        internet,
+        0.85,
+        na.rm = TRUE
+      ) ~ "Alto",
+      
+      internet <= quantile(
+        internet,
+        0.15,
+        na.rm = TRUE
+      ) ~ "Bajo",
+      
+      TRUE ~ "Medio"
+    )
+  )
+
+
+# ============================================================
+# 18. GRÁFICA 3
+#
+# MAPA DE CALOR: CIUDAD - ACTIVIDAD ECONÓMICA
+# ============================================================
+
+ggplot(
+  top_bottom,
+  aes(
+    x = Actividad,
+    y = fct_reorder(DPMP, TOTAL),
+    fill = resaltar
+  )
+) +
+  geom_tile(
+    color = "white",
+    linewidth = 0.6
+  ) +
+  scale_fill_manual(
+    values = c(
+      "Alto" = "#2A9D8F",
+      "Medio" = "grey85",
+      "Bajo" = "#E76F51"
+    ),
+    name = "Nivel"
+  ) +
+  labs(
+    title = "¿Dónde está la mayor oportunidad digital?",
+    subtitle = "Combinaciones ciudad-sector con mayor (verde) y menor (naranja) penetración de internet",
+    x = NULL,
+    y = NULL
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    axis.text.x = element_text(
+      angle = 45,
+      hjust = 1
+    ),
+    plot.title = element_text(
+      face = "bold",
+      size = 15
+    ),
+    panel.grid = element_blank()
   )
 
 
