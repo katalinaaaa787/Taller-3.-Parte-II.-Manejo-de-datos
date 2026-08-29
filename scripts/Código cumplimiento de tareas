@@ -87,8 +87,7 @@ poblacion_dane <- read_excel(
 
 # ============================================================
 # 7. SELECCIONAR POBLACIÓN TOTAL DEL MUNICIPIO
-#
-# AÑO 2022
+#    AÑO 2022
 # ============================================================
 
 dane_tarea4 <- poblacion_dane %>%
@@ -126,8 +125,7 @@ tarea4_poblacion <- tarea4_poblacion %>%
 
 # ============================================================
 # 10. BASE FINAL DE LA TAREA 4
-#
-# USO DE INTERNET + MUNICIPIO + POBLACIÓN
+#     USO DE INTERNET + MUNICIPIO + POBLACIÓN
 # ============================================================
 
 tarea4_final <- tenderos_tareaAgrupar %>%
@@ -224,7 +222,6 @@ tabla_extensa <- tabla_extensa %>%
       "Por debajo"
     )
   )
-
 
 ggplot(
   tabla_extensa,
@@ -391,6 +388,29 @@ ggplot(
     ),
     panel.grid = element_blank()
   )
+
+
+# ============================================================
+# 19. EXPORTAR TABLAS A EXCEL
+# ============================================================
+
+# Instalar el paquete (solo es necesario hacerlo una vez)
+install.packages("writexl")
+
+# Cargar librería
+library(writexl)
+
+# Exportar 'tabla_extensa'
+write_xlsx(
+  tabla_extensa,
+  "tabla_extensa.xlsx"
+)
+
+# Exportar 'tabla_larga'
+write_xlsx(
+  tabla_larga,
+  "tabla_larga.xlsx"
+)
 
 
 # ============================================================
